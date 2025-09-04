@@ -341,7 +341,9 @@ class RecordList:
             except:  # This is the newer way, should work h5py >= 3.0
                 xml = dataset.attrs["GPS Cluster- MetaData_xml"]
             # xml = lowerspace(xml)  # for version 6 data (TODO add this but need to put all the tag names in lower case below)
-            if self._xmlGetValS(xml, "Lat") == "":  # old format (ver <5)
+            
+            # this will trigger if Lat is missing but Lat_N also has to have a value
+            if self._xmlGetValS(xml, "Lat") == "" and self._xmlGetValS(xml, "Lat_N") != "":  # old format (ver <5)
                 self.fileformat_ver = "old_gps"
                 if self.southern_hemisphere:
                     self.lats.append(
