@@ -18,6 +18,7 @@ import numpy as np
 import h5py
 import pandas as pd
 import irlib
+import os
 
 def get_time(gps_timestamp, timestamp, tzoffset, gpsmissing=False):
     """ 
@@ -95,7 +96,12 @@ def readppp(csv_file):
 
     '''
     # Make single file into a list
-    csv_files = glob.glob(csv_file)    
+
+# If gps_file is a directory, read all CSVs inside it
+    if os.path.isdir(csv_file):
+        csv_files = glob.glob(os.path.join(csv_file, "*.csv"))
+    else:
+        csv_files = glob.glob(csv_file)   
     gps_dfs = []
     for file in csv_files:
         print('Reading {}'.format(file))

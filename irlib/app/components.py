@@ -456,47 +456,62 @@ class PickWindow(AppWindow):
         """ Event handler for mouse clicks. Attempts to place a pick
         point where the mouse was clicked. """
 
+        # Middle-click toggles DC/Bed mode
         if event.button == 2:
-
             newmode = "bed" if (self.mode == "dc") else "dc"
             self.change_mode(newmode)
+            return
 
-        else:
+        # Ignore clicks outside axes
+        if event.xdata is None or event.inaxes is not self.ax:
+            return
 
-            # Identify the trace that was aimed for
-            if event.xdata == None or event.inaxes is not self.ax:
-                return
-            activetrace = int(round(event.xdata/self.spacing + self.ntraces/2))
-            try:
-                trace = self.data[:,self.trace0 + activetrace]
-            except IndexError:
-                return
+        # Determine which trace was clicked
+        activetrace = int(round(event.xdata / self.spacing + self.ntraces / 2))
+        try:
+            trace = self.data[:, self.trace0 + activetrace]
+        except IndexError:
+            return
 
-            # Determine if trace already has a point, and if so, remove it
-            pr = self._active_reg()
-            if pr[activetrace] is not None:
-                self.ax.lines.remove(pr[activetrace][0])
-                pr[activetrace] = None
+        # Active registry for DC or Bed
+        pr = self._active_reg()
 
-            if event.button == 1:
-                # Now put a point there
-                yi = round(-event.ydata * self.rate)
-                self._drawpick(trace, yi, activetrace)
+        # If a pick already exists on this trace, remove it
+        if pr[activetrace] is not None:
+            line_to_remove = pr[activetrace][0]
 
-                # Save the picked point
-                self.points[activetrace + self.trace0] = yi
+            # UNIVERSAL Matplotlib-safe removal
+            # Build list of all lines except the one we want to remove
+            new_lines = [ln for ln in self.ax.get_lines() if ln is not line_to_remove]
 
-                self.yi = yi
-                self.activetrace = activetrace
+            # Remove ALL lines from axes
+            for ln in list(self.ax.get_lines()):
+                ln.remove()
 
-            elif event.button == 3:
-                # Remove the point
-                pr[activetrace] = None
-                self.points[activetrace + self.trace0] = np.nan
-                self.activetrace = None
+            # Re-add only the lines we want to keep
+            for ln in new_lines:
+                self.ax.add_line(ln)
+
+            # Clear stored pick
+            pr[activetrace] = None
+
+        # LEFT CLICK → add pick
+        if event.button == 1:
+            yi = round(-event.ydata * self.rate)
+            self._drawpick(trace, yi, activetrace)
+            self.points[activetrace + self.trace0] = yi
+            self.yi = yi
+            self.activetrace = activetrace
+
+        # RIGHT CLICK → remove pick (no new pick)
+        elif event.button == 3:
+            pr[activetrace] = None
+            self.points[activetrace + self.trace0] = np.nan
+            self.activetrace = None
 
         self.update()
         return
+
 
     def _set_trace_scale(self, val):
         self.trace_scale = val
